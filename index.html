@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PZ 基地物資表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== 設定區在 <script> 最上方的 SHEET_CSV_URL ===== */
+:root{
+  --bg:#14150f; --panel:#1d1f17; --panel2:#24271d; --line:#33372a;
+  --text:#e4e2d4; --muted:#9a9a86; --dim:#6d6e5e;
+  --accent:#d4a72c; --accent2:#c2542d; --ok:#8fae4a;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans TC',system-ui,sans-serif;font-size:15px}
+body{background-image:radial-gradient(circle at 20% -10%,#2a2d1f 0,transparent 55%),repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.012) 3px 4px);min-height:100vh}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--line);padding-bottom:14px}
+.brand small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--accent2);text-transform:uppercase}
+h1{margin:4px 0 0;font-size:26px;letter-spacing:.04em}
+h1 span{color:var(--accent)}
+.stats{display:flex;gap:18px;font-family:var(--mono)}
+.stat b{display:block;font-size:22px;color:var(--accent)}
+.stat i{font-style:normal;font-size:11px;color:var(--muted);letter-spacing:.08em}
+.src{font-size:12px;color:var(--dim);margin-top:6px}
+.src.live{color:var(--ok)}
+
+.controls{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 85%,transparent);padding:14px 0 10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.search{flex:1 1 260px;position:relative}
+.search input{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:11px 36px 11px 14px;font:inherit;border-radius:4px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer;display:none}
+select,.toggle{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;font:inherit;border-radius:4px;cursor:pointer}
+.toggle{display:flex;gap:0;padding:0;overflow:hidden}
+.toggle button{background:none;border:0;color:var(--muted);padding:10px 14px;font:inherit;cursor:pointer}
+.toggle button.on{background:var(--accent);color:#1a1a10;font-weight:700}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:thin}
+.chip{flex:none;background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:6px 11px;border-radius:999px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip em{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--dim);margin-left:5px}
+.chip.on{border-color:var(--accent);color:var(--accent);background:#2a2716}
+.chip.on em{color:var(--accent)}
+
+.group{margin-top:22px}
+.group h2{display:flex;align-items:baseline;gap:10px;font-size:16px;margin:0 0 8px;padding:8px 12px;background:var(--panel2);border-left:4px solid var(--accent2);border-radius:2px}
+.group h2 small{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:400}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:500;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
+th.num,td.num{text-align:right}
+th .arr{color:var(--accent)}
+td{padding:8px 10px;border-bottom:1px solid #26291f;vertical-align:top}
+tr:hover td{background:#1f2219}
+td.name{font-weight:500}
+@media (min-width:641px){.group table{max-width:820px} td.name{width:55%}}
+td.num{font-family:var(--mono);font-weight:700;color:var(--accent);width:80px}
+.cat{display:inline-block;font-size:12px;color:#d9b54a;border:1px solid #4a4425;padding:1px 7px;border-radius:3px;white-space:nowrap}
+.cat.w{color:#e07b5a;border-color:#5a3326}
+.loc{display:inline-block;font-size:12px;color:var(--muted);background:#262a1e;padding:2px 7px;border-radius:3px;margin:1px 3px 1px 0;white-space:nowrap}
+.loc b{font-family:var(--mono);color:var(--text);margin-left:4px}
+mark{background:#5a4a10;color:#fff;border-radius:2px}
+.empty{text-align:center;color:var(--dim);padding:50px 0}
+footer{margin-top:40px;font-size:12px;color:var(--dim);text-align:center}
+
+@media (max-width:640px){
+  h1{font-size:21px}
+  .stats{gap:12px}.stat b{font-size:18px}
+  thead{display:none}
+  table,tbody,tr,td{display:block}
+  tr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 4px;border-bottom:1px solid #26291f}
+  td{border:0;padding:0}
+  td.name{grid-column:1}
+  td.num{grid-column:2;grid-row:1 / span 2;align-self:center;font-size:17px;width:auto}
+  td.meta{grid-column:1}
+}
+@media (min-width:641px){ td.meta{display:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <small>Project Zomboid · Base Inventory</small>
+      <h1>基地<span>物資表</span></h1>
+      <div class="src" id="src">讀取中…</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sTypes">0</b><i>品項</i></div>
+      <div class="stat"><b id="sQty">0</b><i>總數量</i></div>
+      <div class="stat"><b id="sLocs">0</b><i>存放處</i></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="row">
+      <div class="search">
+        <input id="q" type="search" placeholder="搜尋物品、類型或位置…（例如：膠帶、彈藥、綠櫃）" autocomplete="off">
+        <button id="clr" aria-label="清除">×</button>
+      </div>
+      <select id="cat"><option value="">全部類型</option></select>
+      <div class="toggle" id="view">
+        <button data-v="loc" class="on">依位置</button>
+        <button data-v="sum">合計</button>
+      </div>
+    </div>
+    <div class="chips" id="locs"></div>
+  </div>
+
+  <main id="out"></main>
+  <footer>資料由截圖整理 · 點欄位標題可排序</footer>
+</div>
+
+<!-- 內建資料（沒設定 Google 試算表時使用） -->
+<script type="text/csv" id="data">
+名稱,數量,類型,位置
+JS-14彈匣,10,彈藥,藍櫃
+M16 5.56mm彈匣,69,彈藥,藍櫃
+M1911 .45彈匣,3,彈藥,藍櫃
+M1A彈匣,5,彈藥,藍櫃
+M9 9mm彈匣,5,彈藥,藍櫃
+盒裝.30-30子彈,5,彈藥,藍櫃
+盒裝.357馬格南子彈,10,彈藥,藍櫃
+盒裝.38 Special子彈,7,彈藥,藍櫃
+盒裝.44馬格南子彈,9,彈藥,藍櫃
+盒裝.45 ACP子彈,1,彈藥,藍櫃
+盒裝12g子彈,9,彈藥,藍櫃
+盒裝5.56x45mm子彈,10,彈藥,藍櫃
+盒裝7.62x51mm子彈,8,彈藥,藍櫃
+盒裝9x19mm子彈,7,彈藥,藍櫃
+箱裝.357馬格南子彈,15,彈藥,藍櫃
+箱裝.44馬格南子彈,15,彈藥,藍櫃
+箱裝12g子彈,10,彈藥,藍櫃
+箱裝5.56x45mm子彈,27,彈藥,藍櫃
+箱裝7.62x51mm子彈,2,彈藥,藍櫃
+箱裝9x19mm子彈,2,彈藥,藍櫃
+武器配件,1,背包,藍櫃
+大砍刀,4,園藝/武器,藍櫃
+棒球棍,1,運動/武器,藍櫃
+金屬棒球棍,6,運動/武器,藍櫃
+戰斧,1,工具/武器,藍櫃
+消防斧,18,工具/武器,藍櫃
+翼緣暮星錘,2,工具/武器,藍櫃
+長匕首,1,工具/武器,藍櫃
+JS-14式步槍,8,武器,藍櫃
+JS-2000霰彈槍,6,武器,藍櫃
+JS-3T戰術霰彈槍,7,武器,藍櫃
+L92卡賓槍,7,武器,藍櫃
+L94步槍,3,武器,藍櫃
+M16突擊步槍,7,武器,藍櫃
+M1A 步槍,2,武器,藍櫃
+MSR700獵狐步槍,2,武器,藍櫃
+MSR788狩獵步槍,2,武器,藍櫃
+劊子手之劍,2,武器,藍櫃
+巡邏用左輪手槍,1,武器,藍櫃
+梅瑟劍,5,武器,藍櫃
+武士刀,43,武器,藍櫃
+獵刀,6,武器,藍櫃
+翼緣晨星錘,2,武器,藍櫃
+裝甲劍 (樣式 1),1,武器,藍櫃
+警棍,2,武器,藍櫃
+釘頭錘,1,武器,藍櫃
+長劍 (樣式 1),1,武器,藍櫃
+長劍 (樣式 1) (鈍),1,武器,藍櫃
+雙管霰彈槍,2,武器,藍櫃
+馬格南左輪手槍,7,武器,藍櫃
+牙刷匕首,1,武器,藍櫃
+金屬棒球棍 (圓鋸片),1,武器,藍櫃
+長柄戰斧,1,武器,藍櫃
+可愛口罩,2,配飾,綠櫃
+可愛褲襪,2,配飾,綠櫃
+可愛透明褲襪,2,配飾,綠櫃
+可愛項圈,1,配飾,綠櫃
+右眼罩,1,配飾,綠櫃
+夾式領帶,1,配飾,綠櫃
+婚禮頭紗,1,配飾,綠櫃
+左眼罩,2,配飾,綠櫃
+復古大框太陽眼鏡,2,配飾,綠櫃
+手套 (狩獵迷彩),2,配飾,綠櫃
+新浪潮太陽眼鏡,2,配飾,綠櫃
+時尚反光太陽眼鏡,2,配飾,綠櫃
+涼帽,1,配飾,綠櫃
+獠牙項鍊 (一顆),1,配飾,綠櫃
+獸皮槍套,1,配飾,綠櫃
+皮帶,121,配飾,綠櫃
+皮手套,3,配飾,綠櫃
+絲襪 (半透明),1,配飾,綠櫃
+絲襪 (白),2,配飾,綠櫃
+絲襪 (黑),1,配飾,綠櫃
+老花眼鏡,1,配飾,綠櫃
+聖誕帽 (紅),3,配飾,綠櫃
+聖誕帽 (綠),3,配飾,綠櫃
+褲襪 (半透明),2,配飾,綠櫃
+褲襪 (漁網),1,配飾,綠櫃
+褲襪 (透明),1,配飾,綠櫃
+豪華腕錶,1,配飾,綠櫃
+貓眼太陽眼鏡,1,配飾,綠櫃
+過膝襪 (白),2,配飾,綠櫃
+過膝襪 (黑),1,配飾,綠櫃
+遮陽帽,1,配飾,綠櫃
+金色鏡框處方眼鏡,1,配飾,綠櫃
+頭鏡 (上翻),1,配飾,綠櫃
+騎士皮手套,1,配飾,綠櫃
+野豬獠牙,2,動物部位,綠櫃
+包包,1,背包,綠櫃
+包包2,1,背包,綠櫃
+娃娃,1,背包,綠櫃
+手錶、膠囊,1,背包,綠櫃
+鑰匙圈,1,背包,綠櫃
+睡袋 (已打包),2,露營,綠櫃
+Polo衫,1,衣服,綠櫃
+T恤 (紮染),2,衣服,綠櫃
+三釦西裝外套 (校徽),1,衣服,綠櫃
+保齡球鞋,1,衣服,綠櫃
+兩釦西裝外套 (校徽),1,衣服,綠櫃
+可愛連帽衫,1,衣服,綠櫃
+吉利服上衣,1,衣服,綠櫃
+吉利服褲子,1,衣服,綠櫃
+圍裙 (燒烤),1,衣服,綠櫃
+圍裙 (白),1,衣服,綠櫃
+圍裙 (黑) (骯髒),1,衣服,綠櫃
+垃圾袋雨披,1,衣服,綠櫃
+婚紗,1,衣服,綠櫃
+學蘭制服,1,衣服,綠櫃
+布面甲,1,衣服,綠櫃
+日式室內鞋,1,衣服,綠櫃
+板片甲,1,衣服,綠櫃
+校服毛衣背心,1,衣服,綠櫃
+校服運動衫,1,衣服,綠櫃
+標準胸罩 (白),2,衣服,綠櫃
+標準胸罩 (豹紋),2,衣服,綠櫃
+橄欖球護腿褲,1,衣服,綠櫃
+比基尼,2,衣服,綠櫃
+水手服,2,衣服,綠櫃
+無肩帶胸罩,1,衣服,綠櫃
+無肩帶胸罩 (粉紅褶邊),1,衣服,綠櫃
+無肩帶胸罩 (豹紋),1,衣服,綠櫃
+皮質夾克,2,衣服,綠櫃
+皮質夾克 (黑),3,衣服,綠櫃
+緊身皮褲,1,衣服,綠櫃
+緊身胸衣,2,衣服,綠櫃
+聖誕服上衣 (紅),1,衣服,綠櫃
+聖誕服上衣 (綠),3,衣服,綠櫃
+軍用夾克 (軍官) (骯髒),1,衣服,綠櫃
+長袖水手服,2,衣服,綠櫃
+長褲 (皮質),1,衣服,綠櫃
+長褲 (聖誕老人套裝),1,衣服,綠櫃
+"長褲 (聖誕老人套裝, 綠)",2,衣服,綠櫃
+雨衣 (綠),2,衣服,綠櫃
+軍用背包無線電,2,通訊,綠櫃
+兔耳 (白),2,耳朵,綠櫃
+兔耳 (黑),3,耳朵,綠櫃
+手搖鈴,1,廢舊物,綠櫃
+丙烷提燈,13,光源,綠櫃
+丙烷氣瓶,10,光源,綠櫃
+彎頭手電筒,1,光源,綠櫃
+防風提燈,1,光源,綠櫃
+棉布捲,1,材料,綠櫃
+深藍色牛仔布捲,1,材料,綠櫃
+藍色牛仔布捲,2,材料,綠櫃
+金錠 (小),5,材料,綠櫃
+銀錠 (小),5,材料,綠櫃
+黑色牛仔布捲,2,材料,綠櫃
+3D 眼鏡,1,紀念品,綠櫃
+夏日花帽,1,紀念品,綠櫃
+女巫帽,1,紀念品,綠櫃
+巫師帽,3,紀念品,綠櫃
+插刀帽,2,紀念品,綠櫃
+斯皮福領帶,1,紀念品,綠櫃
+星星抱枕,1,紀念品,綠櫃
+水晶,1,紀念品,綠櫃
+派對帽 (星星),2,紀念品,綠櫃
+派對帽 (條紋),2,紀念品,綠櫃
+浣熊帽,1,紀念品,綠櫃
+海盜帽,2,紀念品,綠櫃
+清教徒帽,1,紀念品,綠櫃
+漁夫雨帽,1,紀念品,綠櫃
+燕尾服T恤,1,紀念品,綠櫃
+祖母綠,8,紀念品,綠櫃
+紅寶石,7,紀念品,綠櫃
+老式焊接護目鏡,4,紀念品,綠櫃
+草帽,1,紀念品,綠櫃
+萬聖節面具 (怪物),1,紀念品,綠櫃
+萬聖節面具 (惡魔),1,紀念品,綠櫃
+藍寶石,8,紀念品,綠櫃
+襪帶,2,紀念品,綠櫃
+軍功章,3,紀念品,綠櫃
+銀牌,1,紀念品,綠櫃
+銅牌,3,紀念品,綠櫃
+鑽石,8,紀念品,綠櫃
+飛馳夾克 (桶犬),1,紀念品,綠櫃
+鹿角頭飾,1,紀念品,綠櫃
+半面防毒面具,10,防護裝備,綠櫃
+巨盔,1,防護裝備,綠櫃
+摩托車頭盔,1,防護裝備,綠櫃
+活動頭盔 (閉合),1,防護裝備,綠櫃
+活動頭盔 (面甲開啟),1,防護裝備,綠櫃
+羊毛斗篷 (放下),1,防護裝備,綠櫃
+鍊甲 (骯髒),2,防護裝備,綠櫃
+鎖甲手套 (左),5,防護裝備,綠櫃
+鏈甲外套,1,防護裝備,綠櫃
+開臉犬首盔 (閉合),2,防護裝備,綠櫃
+開臉犬首盔 (開啟),1,防護裝備,綠櫃
+開臉盔,2,防護裝備,綠櫃
+防毒面具,1,防護裝備,綠櫃
+面罩開臉盔 (閉合),2,防護裝備,綠櫃
+面罩開臉盔 (開啟),1,防護裝備,綠櫃
+鬍鬚臉頭盔,1,防護裝備,綠櫃
+鬍鬚臉頭盔 (閉合),1,防護裝備,綠櫃
+單眼放大鏡,1,工具,綠櫃
+空 水壺,3,水容器,綠櫃
+空 牛仔水壺,2,水容器,綠櫃
+肩掛槍套,2,配飾,綠櫃・包包
+防毒面具濾芯,1,配飾,綠櫃・包包
+S.T.A.R.S. 偵察胸掛,2,背包,綠櫃・包包
+S.T.A.R.S. 強化水袋背包 (水),1,背包,綠櫃・包包
+S.T.A.R.S. 彈藥背帶,2,背包,綠櫃・包包
+S.T.A.R.S. 腰掛工具包,2,背包,綠櫃・包包
+保護傘 信差側背包,3,背包,綠櫃・包包
+保護傘 偵察胸掛,3,背包,綠櫃・包包
+保護傘 彈藥背帶,2,背包,綠櫃・包包
+保護傘 日行背包,3,背包,綠櫃・包包
+保護傘 腰掛工具包,1,背包,綠櫃・包包
+保護傘 行李袋 (強化),1,背包,綠櫃・包包
+保護傘 遠征框架背包,2,背包,綠櫃・包包
+保護傘 遠征框架背包 (強化),1,背包,綠櫃・包包
+保護傘 醫療腰包,4,背包,綠櫃・包包
+側背包,2,背包,綠櫃・包包
+子彈揹帶,4,背包,綠櫃・包包
+布製槍箱,7,背包,綠櫃・包包
+愛麗絲揹帶 (綠色),1,背包,綠櫃・包包
+愛麗絲揹帶 (迷彩),1,背包,綠櫃・包包
+空 保護傘 強化水袋背包,1,背包,綠櫃・包包
+腰包 (正面),4,背包,綠櫃・包包
+軍用背包,1,背包,綠櫃・包包
+郵差包,1,背包,綠櫃・包包
+霰彈揹帶,1,背包,綠櫃・包包
+高爾夫球袋,1,背包,綠櫃・包包
+步槍箱,2,容器,綠櫃・包包
+獵槍箱,1,容器,綠櫃・包包
+半面防毒面具,2,防護裝備,綠櫃・包包
+側背包,1,背包,綠櫃・包包2
+布製槍箱,2,背包,綠櫃・包包2
+空 水袋背包,2,背包,綠櫃・包包2
+行李袋,1,背包,綠櫃・包包2
+軍用側背包,2,背包,綠櫃・包包2
+軍用背包,1,背包,綠櫃・包包2
+軍用行李袋,1,背包,綠櫃・包包2
+醫療側背包,2,背包,綠櫃・包包2
+醫療救護包,2,背包,綠櫃・包包2
+ValuTech 地圖手錶,14,配飾,綠櫃・手錶、膠囊
+嗶嗶腕機 BB-3000,1,配飾,綠櫃・手錶、膠囊
+遊騎兵 戰術手錶,1,配飾,綠櫃・手錶、膠囊
+Knox Pass 感應模組,2,電子零件,綠櫃・手錶、膠囊
+中繼核心,1,電子零件,綠櫃・手錶、膠囊
+名錄模組,2,電子零件,綠櫃・手錶、膠囊
+定位模組,1,電子零件,綠櫃・手錶、膠囊
+照明模組,2,電子零件,綠櫃・手錶、膠囊
+卡通膠囊,1,工具,綠櫃・手錶、膠囊
+塵土膠囊,3,工具,綠櫃・手錶、膠囊
+寫實膠囊,1,工具,綠櫃・手錶、膠囊
+科幻膠囊,2,工具,綠櫃・手錶、膠囊
+蒸汽膠囊,1,工具,綠櫃・手錶、膠囊
+魔法膠囊,1,工具,綠櫃・手錶、膠囊
+鑰匙環 (兔腳),1,兔子,綠櫃・鑰匙圈
+鑰匙環 (斯皮福),1,紀念品,綠櫃・鑰匙圈
+海狸雅克玩偶,2,海狸,綠櫃・娃娃
+蚜蟲胖嘟嘟玩偶,2,昆蟲,綠櫃・娃娃
+肉丸鬥牛犬,4,狗,綠櫃・娃娃
+兔子茸毛腳玩偶,1,兔子,綠櫃・娃娃
+狗狗潘喬,2,狗,綠櫃・娃娃
+橡皮鴨,8,鴨子,綠櫃・娃娃
+狐狸弗雷迪玩偶,1,狐狸,綠櫃・娃娃
+洋娃娃,2,紀念品,綠櫃・娃娃
+笑臉抱枕,1,紀念品,綠櫃・娃娃
+松鼠弗伯特玩偶,1,松鼠,綠櫃・娃娃
+呼吸器濾芯,22,配飾,紅櫃
+防毒面具濾芯,1,配飾,紅櫃
+定型噴霧,2,外觀,紅櫃
+盒裝垃圾袋,2,容器,紅櫃
+接收器,9,電子零件,紅櫃
+放大器,3,電子零件,紅櫃
+放大器 (整盒),9,電子零件,紅櫃
+放大器 (整箱),1,電子零件,紅櫃
+智慧型手機,5,電子零件,紅櫃
+無線電接收器,9,電子零件,紅櫃
+無線電接收器 (整盒),11,電子零件,紅櫃
+特斯拉第三代行動充電器,1,電子零件,紅櫃
+盒裝電池,21,電子零件,紅櫃
+自製觸發器,3,電子零件,紅櫃
+運動感測器,5,電子零件,紅櫃
+遙控器V1 (短距離),1,電子零件,紅櫃
+遙控器V2 (中距離),1,電子零件,紅櫃
+遙控器V3 (長距離),1,電子零件,紅櫃
+電子廢料,10,電子零件,紅櫃
+電子廢料 (整盒),16,電子零件,紅櫃
+電子廢料 (整箱),5,電子零件,紅櫃
+電池 (整箱),3,電子零件,紅櫃
+電線,11,電子零件,紅櫃
+電線 (整盒),10,電子零件,紅櫃
+電線 (整箱),5,電子零件,紅櫃
+修正液,1,家用,紅櫃
+寫字板,3,家用,紅櫃
+碎布條,15,家用,紅櫃
+嚼菸,13,廢舊物,紅櫃
+小雪茄,43,廢舊物,紅櫃
+捲菸紙,4,廢舊物,紅櫃
+散裝菸草,3,廢舊物,紅櫃
+條裝香菸,4,廢舊物,紅櫃
+盒裝香菸,45,廢舊物,紅櫃
+雪茄,18,廢舊物,紅櫃
+香菸,8,廢舊物,紅櫃
+中型原始皮,4,材料,紅櫃
+兔皮 (未加工),3,材料,紅櫃
+大力膠帶,9,材料,紅櫃
+大型原始皮,9,材料,紅櫃
+小手柄,11,材料,紅櫃
+床單,10,材料,紅櫃
+捆裝牛仔布條,4,材料,紅櫃
+捆裝皮革條,8,材料,紅櫃
+捆裝碎布條,14,材料,紅櫃
+木膠,6,材料,紅櫃
+毛線,38,材料,紅櫃
+油布塊,9,材料,紅櫃
+浣熊皮革 (未處理),2,材料,紅櫃
+牛仔布條,9,材料,紅櫃
+環氧樹脂,3,材料,紅櫃
+皮帶扣,3,材料,紅櫃
+皮帶扣 (整盒),12,材料,紅櫃
+皮革條,3,材料,紅櫃
+盒裝仙女棒,6,材料,紅櫃
+盒裝大力膠帶,1,材料,紅櫃
+盒裝螺絲,4,材料,紅櫃
+盒裝釘子,7,材料,紅櫃
+筋線,6,材料,紅櫃
+箱裝釘子,4,材料,紅櫃
+粗麻布片,2,材料,紅櫃
+紐扣 (整盒),7,材料,紅櫃
+線,72,材料,紅櫃
+膠帶,10,材料,紅櫃
+芳綸線 (整盒),3,材料,紅櫃
+蘭德拉斯豬皮 (未加工),7,材料,紅櫃
+釘子,98,材料,紅櫃
+鈕扣,9,材料,紅櫃
+銅廢料 (整盒),7,材料,紅櫃
+鋁碎片,11,材料,紅櫃
+鋁碎片 (整盒),3,材料,紅櫃
+鋁箔,1,材料,紅櫃
+門把手,2,材料,紅櫃
+門把手 (整盒),5,材料,紅櫃
+門鉸鏈,3,材料,紅櫃
+門鉸鏈 (整盒),2,材料,紅櫃
+麻繩,12,材料,紅櫃
+麻繩 (整盒),2,材料,紅櫃
+打火機,27,火源,墨綠櫃
+醫用剪刀,2,急救,墨綠櫃
+鑷子,8,急救,墨綠櫃
+鐮刀,3,園藝,墨綠櫃
+園藝鋤,1,園藝/武器,墨綠櫃
+工兵鏟,3,園藝/武器,墨綠櫃
+安全剪刀,2,家用,墨綠櫃
+打火機油,4,家用,墨綠櫃
+剪刀,7,家用/武器,墨綠櫃
+水桶 (灰泥),3,材料,墨綠櫃
+耙頭,1,材料,墨綠櫃
+油漆 (棕),5,油漆,墨綠櫃
+油漆 (橙),5,油漆,墨綠櫃
+油漆 (淺棕),5,油漆,墨綠櫃
+油漆 (淺藍),5,油漆,墨綠櫃
+油漆 (灰),5,油漆,墨綠櫃
+油漆 (白),5,油漆,墨綠櫃
+油漆 (粉),5,油漆,墨綠櫃
+油漆 (紅),5,油漆,墨綠櫃
+油漆 (紫),4,油漆,墨綠櫃
+油漆 (綠),5,油漆,墨綠櫃
+油漆 (藍),5,油漆,墨綠櫃
+油漆 (青),5,油漆,墨綠櫃
+油漆 (青綠),5,油漆,墨綠櫃
+油漆 (黃),5,油漆,墨綠櫃
+油漆 (黑),5,油漆,墨綠櫃
+剝皮工具,1,工具,墨綠櫃
+割草刀片 類型 標準型,1,工具,墨綠櫃
+園藝鋸,4,工具,墨綠櫃
+大力鉗,3,工具,墨綠櫃
+小刷子,1,工具,墨綠櫃
+小型衝鑿套裝,6,工具,墨綠櫃
+小型銼刀套裝,5,工具,墨綠櫃
+手鑽,6,工具,墨綠櫃
+抹刀,5,工具,墨綠櫃
+木製毛衣針,1,工具,墨綠櫃
+橡膠軟管,2,工具,墨綠櫃
+油漆刷,7,工具,墨綠櫃
+焊工面罩,2,工具,墨綠櫃
+編織針,1,工具,墨綠櫃
+針,6,工具,墨綠櫃
+鉗子,6,工具,墨綠櫃
+鋼鋸,1,工具,墨綠櫃
+錐子,2,工具,墨綠櫃
+黏土塑形工具,3,工具,墨綠櫃
+丁字鎬,5,工具/武器,墨綠櫃
+伐木斧,2,工具/武器,墨綠櫃
+圓頭錘,6,工具/武器,墨綠櫃
+圓頭錘 (染血),1,工具/武器,墨綠櫃
+多功能工具,23,工具/武器,墨綠櫃
+撬棍,1,工具/武器,墨綠櫃
+撬棍 (鍛造),2,工具/武器,墨綠櫃
+斷線鉗,2,工具/武器,墨綠櫃
+木工鑿,2,工具/武器,墨綠櫃
+棘輪扳手,3,工具/武器,墨綠櫃
+瑞士軍刀,3,工具/武器,墨綠櫃
+石工抹刀,3,工具/武器,墨綠櫃
+石工錘,3,工具/武器,墨綠櫃
+石工鑿,4,工具/武器,墨綠櫃
+破冰斧 (染血),1,工具/武器,墨綠櫃
+破牆大錘,23,工具/武器,墨綠櫃
+管鉗,3,工具/武器,墨綠櫃
+羊角錘,5,工具/武器,墨綠櫃
+金屬加工衝頭,2,工具/武器,墨綠櫃
+金屬加工鑿,2,工具/武器,墨綠櫃
+鍛造大錘,1,工具/武器,墨綠櫃
+鐵匠錘,1,工具/武器,墨綠櫃
+長匕首 (染血),1,工具/武器,墨綠櫃
+十字扳手,4,車輛維護,墨綠櫃
+千斤頂,1,車輛維護,墨綠櫃
+打氣筒,6,車輛維護,墨綠櫃
+空 水桶,2,水容器,墨綠櫃
+大鋼塊,3,材料,鍛造拖車
+大鋼塊 (整盒),1,材料,鍛造拖車
+鋼塊,1,材料,鍛造拖車
+鋼塊 (整盒),2,材料,鍛造拖車
+鋼塊 (整箱),1,材料,鍛造拖車
+鋼塊 (穿孔),1,材料,鍛造拖車
+鋼條 (1/4),1,材料,鍛造拖車
+"鋼條 (1/4, 整盒)",2,材料,鍛造拖車
+"鋼條 (1/4, 整箱)",9,材料,鍛造拖車
+鋼片 (整盒),6,材料,鍛造拖車
+鋼片 (整箱),1,材料,鍛造拖車
+鐵條 (1/4),2,材料,鍛造拖車
+"鐵條 (1/4, 整盒)",1,材料,鍛造拖車
+鐵片,3,材料,鍛造拖車
+鐵片 (整盒),3,材料,鍛造拖車
+鐵箍 (小),3,材料,鍛造拖車
+鋼條,86,材料/武器,鍛造拖車
+鋼條 (1/2),3,材料/武器,鍛造拖車
+"鋼條 (1/2, 整盒)",9,材料/武器,鍛造拖車
+鋼棒,50,材料/武器,鍛造拖車
+鋼棒 (1/2),26,材料/武器,鍛造拖車
+鋼棒 (染血),1,材料/武器,鍛造拖車
+鐵條,43,材料/武器,鍛造拖車
+鐵條 (1/2),5,材料/武器,鍛造拖車
+大鉤子,24,工具/武器,鍛造拖車
+麻袋,1,背包,黏土麻袋拖車
+沙袋,9,材料,黏土麻袋拖車
+石磚,16,材料,黏土麻袋拖車
+碎石袋,52,材料,黏土麻袋拖車
+磚塊,87,材料,黏土麻袋拖車
+袋裝黏土,78,材料,黏土麻袋拖車
+黏土,124,材料,黏土麻袋拖車
+黏土塑形工具,1,工具,黏土麻袋拖車
+麻袋,71,容器,黏土麻袋拖車・麻袋
+植物油,16,食物,加工用具箱
+空 錫罐,1,廢舊物,加工用具箱
+圓鋸片,5,材料,加工用具箱
+圓鋸片 (整盒),3,材料,加工用具箱
+機械潤滑油,26,材料,加工用具箱
+砂輪,5,材料,加工用具箱
+小型衝鑿套裝,1,工具,加工用具箱
+機用鑽頭組,5,工具,加工用具箱
+橡膠軟管,11,工具,加工用具箱
+磨刀石,2,工具,加工用具箱
+車床刀具組,8,工具,加工用具箱
+金屬加工衝頭,3,工具/武器,加工用具箱
+金屬加工鑿,4,工具/武器,加工用具箱
+液壓維修套件,5,車輛維護,加工用具箱
+"雞蛋 (新鮮, 未烹飪)",35,食物,種子箱
+亞麻種子包,11,園藝,種子箱
+南瓜種子包,8,園藝,種子箱
+向日葵種子包,10,園藝,種子箱
+哈瓦那辣椒種子包,5,園藝,種子箱
+啤酒花種子包,10,園藝,種子箱
+墨西哥辣椒種子包,7,園藝,種子箱
+大蒜種子包,7,園藝,種子箱
+大麥種子包,27,園藝,種子箱
+小麥種子,140,園藝,種子箱
+小麥種子包,22,園藝,種子箱
+櫛瓜種子包,8,園藝,種子箱
+櫻桃蘿蔔種子包,8,園藝,種子箱
+歐芹種子包,18,園藝,種子箱
+洋甘菊種子包,5,園藝,種子箱
+洋蔥種子包,10,園藝,種子箱
+牛至種子包,16,園藝,種子箱
+玉米種子包,18,園藝,種子箱
+玫瑰種子包,4,園藝,種子箱
+甜椒種子包,4,園藝,種子箱
+甜菜種子包,14,園藝,種子箱
+生菜種子包,7,園藝,種子箱
+番茄種子包,4,園藝,種子箱
+百里香種子包,12,園藝,種子箱
+空園藝噴壺,3,園藝,種子箱
+紅薯種子包,8,園藝,種子箱
+細香蔥種子包,16,園藝,種子箱
+罌粟種子包,2,園藝,種子箱
+羅勒種子包,7,園藝,種子箱
+羽衣甘藍種子,2,園藝,種子箱
+聚合草種子,6,園藝,種子箱
+胡蘿蔔種子包,9,園藝,種子箱
+花椰菜種子包,3,園藝,種子箱
+草莓種子包,11,園藝,種子箱
+菠菜種子包,7,園藝,種子箱
+菸草種子包,14,園藝,種子箱
+萬壽菊種子,5,園藝,種子箱
+萬壽菊種子包,15,園藝,種子箱
+蕪菁種子,17,園藝,種子箱
+薄荷種子,2,園藝,種子箱
+薄荷種子包,15,園藝,種子箱
+薰衣草種子包,5,園藝,種子箱
+西瓜種子包,11,園藝,種子箱
+迷迭香種子,2,園藝,種子箱
+迷迭香種子包,10,園藝,種子箱
+青花菜種子,2,園藝,種子箱
+青花菜種子包,6,園藝,種子箱
+青豌豆 (乾燥),2,園藝,種子箱
+青豌豆種子包,4,園藝,種子箱
+韭蔥種子包,4,園藝,種子箱
+香菜種子包,8,園藝,種子箱
+馬鈴薯種子,2,園藝,種子箱
+馬鈴薯種子包,19,園藝,種子箱
+高麗菜種子,2,園藝,種子箱
+高麗菜種子包,6,園藝,種子箱
+黃瓜種子包,8,園藝,種子箱
+黑麥種子包,10,園藝,種子箱
+鼠尾草種子,2,園藝,種子箱
+鼠尾草種子包,11,園藝,種子箱
+剔骨刀,2,烹飪/武器,釣魚箱
+浮標,19,釣魚,釣魚箱
+漁網,8,釣魚,釣魚箱
+盒裝魚鉤,6,釣魚,釣魚箱
+米諾假餌,5,釣魚,釣魚箱
+鉛頭鉤假餌,5,釣魚,釣魚箱
+高級魚線,6,釣魚,釣魚箱
+魚線,4,釣魚,釣魚箱
+魚線 (整盒),5,釣魚,釣魚箱
+魚鉤,9,釣魚,釣魚箱
+釣竿 with 蟋蟀,1,釣魚/武器,釣魚箱
+釣竿 with 鉛頭鉤假餌,1,釣魚/武器,釣魚箱
+魚竿 (魚線),10,釣魚/武器,釣魚箱
+蝸牛罐頭,5,食物,釣魚箱
+蟋蟀罐頭,3,食物,釣魚箱
+蠕蟲罐頭,3,食物,釣魚箱
+鮭魚罐頭,1,食物,釣魚箱
+鯷魚罐頭,2,食物,釣魚箱
+小鋼板,238,材料,修車櫃左上
+焊條,7,材料,修車櫃左上
+焊條 (整盒),30,材料,修車櫃左上
+盒裝螺絲,2,材料,修車櫃左上
+螺帽與螺栓 (整盒),12,材料,修車櫃左上
+螺母與螺栓,9,材料,修車櫃左上
+金屬廢料,8,材料,修車櫃左上
+金屬廢料 (整盒),2,材料,修車櫃左上
+金屬廢料 (整箱),9,材料,修車櫃左上
+鋼板,73,材料,修車櫃左上
+鋼棒,104,材料/武器,修車櫃左上
+鐵管,95,材料/武器,修車櫃左上
+燈泡 (白),6,電子零件,修車櫃左中
+盒裝燈泡,28,電子零件,修車櫃左中
+手術刀,3,急救/武器,修車櫃左中
+塑膠焊接釘 (100 入),1,材料,修車櫃左中
+捆裝鐵絲,6,材料,修車櫃左中
+油布,11,材料,修車櫃左中
+玻璃板,206,材料,修車櫃左中
+盒裝螺絲,20,材料,修車櫃左中
+膠水,8,材料,修車櫃左中
+膠水 (整盒),1,材料,修車櫃左中
+螺母與螺栓,1,材料,修車櫃左中
+螺絲,240,材料,修車櫃左中
+輪胎碎片,51,材料,修車櫃左中
+鋼板,40,材料,修車櫃左中
+鐵絲,19,材料,修車櫃左中
+防水布 (整盒),8,材料,修車櫃左中
+丙烷噴燈,306,工具,修車櫃左中
+塑膠焊接工具包,6,工具,修車櫃左中
+塑膠焊接槍,1,工具,修車櫃左中
+輪胎修理包,128,工具,修車櫃左中
+前側車窗 類型 商用型,1,車輛維護,修車櫃左中
+前側車窗 類型 標準型,3,車輛維護,修車櫃左中
+引擎零件,251,車輛維護,修車櫃左中
+後側車窗 類型 標準型,1,車輛維護,修車櫃左中
+後擋風玻璃 類型 商用型,1,車輛維護,修車櫃左中
+後擋風玻璃 類型 標準型,2,車輛維護,修車櫃左中
+擋風玻璃 類型 商用型,2,車輛維護,修車櫃左中
+擋風玻璃 類型 標準型,2,車輛維護,修車櫃左中
+擋風玻璃 類型 運動型,2,車輛維護,修車櫃左中
+懸吊 (高階) 類型 商用型,66,車輛維護,修車櫃左下
+懸吊 (高階) 類型 標準型,101,車輛維護,修車櫃左下
+懸吊 (高階) 類型 運動型,27,車輛維護,修車櫃左下
+橡膠條 類型 標準型,56,車輛維護,修車櫃左下
+煞車 (高階) 類型 商用型,72,車輛維護,修車櫃左下
+煞車 (高階) 類型 標準型,133,車輛維護,修車櫃左下
+煞車 (高階) 類型 運動型,17,車輛維護,修車櫃左下
+帶鉤重型鏈條,1,工具,修車櫃右上
+重型鏈條,8,工具,修車櫃右上
+車頂燈,13,改裝,修車櫃右上
+防滑鏈,7,改裝,修車櫃右上
+63款福斯金龜車輪胎 類型 標準型,4,車輛維護,修車櫃右上
+85款通用B型車前車門 類型 標準型,1,車輛維護,修車櫃右上
+85款通用B型車的車後門 類型 標準型,1,車輛維護,修車櫃右上
+89款Land Rover衛士帶工具箱防滾架 類型 商用型,1,車輛維護,修車櫃右上
+90款BMW E30輪胎 類型 運動型,1,車輛維護,修車櫃右上
+92款日產天際線R32三型側裙 類型 運動型,1,車輛維護,修車櫃右上
+92款日產天際線R32三型前保險桿 類型 運動型,1,車輛維護,修車櫃右上
+W900防撞桿,1,車輛維護,修車櫃右上
+小型防爆輪胎 類型 商用型,2,車輛維護,修車櫃右上
+標準通用輪胎 類型 標準型,5,車輛維護,修車櫃右上
+油箱 (大型) 類型 標準型,4,車輛維護,修車櫃右上
+油箱 (大型) 類型 運動型,3,車輛維護,修車櫃右上
+油箱 (小型) 類型 標準型,1,車輛維護,修車櫃右上
+第三代雪佛蘭C/K系列背側窗 類型 商用型,2,車輛維護,修車櫃右上
+警示燈 (紅藍),1,車輛維護,修車櫃右上
+車前門 類型 商用型,1,車輛維護,修車櫃右上
+重型通用輪胎 類型 商用型,7,車輛維護,修車櫃右上
+GPS 導航儀,5,電子零件,修車櫃右中
+GPS 導航儀 (倒空),45,電子零件,修車櫃右中
+Knox Pass 大門讀頭,1,電子零件,修車櫃右中
+Knox Pass 大門讀頭（深藍）,2,電子零件,修車櫃右中
+Knox Pass 大門讀頭（石墨灰）,1,電子零件,修車櫃右中
+Knox Pass 大門讀頭（紅色）,2,電子零件,修車櫃右中
+Knox Pass 大門讀頭（軍綠）,1,電子零件,修車櫃右中
+Knox Pass 車用感應盒,4,電子零件,修車櫃右中
+Knox Pass 車用感應盒（安全橘）,1,電子零件,修車櫃右中
+Knox Pass 車用感應盒（深藍）,6,電子零件,修車櫃右中
+Knox Pass 車用感應盒（石墨灰）,5,電子零件,修車櫃右中
+Knox Pass 車用感應盒（紅色）,1,電子零件,修車櫃右中
+Knox Pass 車用感應盒（軍綠）,3,電子零件,修車櫃右中
+Knox Pass 車用感應盒（黑色）,2,電子零件,修車櫃右中
+自動駕駛模組,16,電子零件,修車櫃右中
+汽車電池 類型 商用型,32,車輛維護,修車櫃右中
+汽車電池 類型 標準型,38,車輛維護,修車櫃右中
+汽車電池 類型 運動型,35,車輛維護,修車櫃右中
+輪胎 (高階) 類型 商用型,20,車輛維護,修車櫃右下
+輪胎 (高階) 類型 標準型,44,車輛維護,修車櫃右下
+輪胎 (高階) 類型 運動型,22,車輛維護,修車櫃右下
+修車包1,1,背包,修車包箱
+修車包2,1,背包,修車包箱
+修車包3,1,背包,修車包箱
+湯匙 (木製),106,烹飪,修車包箱
+塑膠瓶 (汽油),4,食物,修車包箱
+汽油罐 (汽油),3,車輛維護,修車包箱
+空 汽油罐,10,車輛維護,修車包箱
+空 塑膠瓶,8,水,修車包箱
+</script>
+
+<script>
+/* ============ 設定 ============
+   把 Google 試算表的 CSV 連結貼在這裡，網頁就會改讀試算表。
+   格式：https://docs.google.com/spreadsheets/d/【試算表ID】/gviz/tq?tqx=out:csv
+   留空就用上面的內建資料。                                         */
+const SHEET_CSV_URL = '';
+/* ============================== */
+
+const $ = s => document.querySelector(s);
+const state = { q:'', cat:'', loc:'', view:'loc', sort:{key:'name',dir:1} };
+let items = [];
+
+function parseCSV(text){
+  const rows=[]; let row=[], f='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(f); f=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(f); if(row.some(x=>x.trim()))rows.push(row); row=[]; f=''; }
+    else f+=c;
+  }
+  row.push(f); if(row.some(x=>x.trim())) rows.push(row);
+  return rows;
+}
+function toItems(text){
+  const rows=parseCSV(text.trim()); const h=rows.shift().map(s=>s.trim());
+  const ix=k=>h.indexOf(k);
+  const [n,c,t,l]=[ix('名稱'),ix('數量'),ix('類型'),ix('位置')];
+  return rows.map(r=>({
+    name:(r[n]||'').trim(), qty:parseInt(r[c],10)||0,
+    cat:(r[t]||'').trim(), loc:(r[l]||'').trim()
+  })).filter(x=>x.name);
+}
+const mainCat = c => c.split('/')[0];
+const parentLoc = l => l.split('・')[0];
+const esc = s => s.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function hl(s){
+  const e=esc(s); if(!state.q) return e;
+  const qq=esc(state.q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return e.replace(new RegExp(qq,'gi'),m=>`<mark>${m}</mark>`);
+}
+const fmt = n => n.toLocaleString('zh-TW');
+
+async function load(){
+  if(SHEET_CSV_URL){
+    try{
+      const r=await fetch(SHEET_CSV_URL,{cache:'no-store'});
+      if(!r.ok) throw 0;
+      items=toItems(await r.text());
+      $('#src').textContent='● 即時資料：Google 試算表';
+      $('#src').classList.add('live');
+    }catch(e){
+      items=toItems($('#data').textContent);
+      $('#src').textContent='⚠ 讀不到試算表，改用內建資料';
+    }
+  } else {
+    items=toItems($('#data').textContent);
+    $('#src').textContent='內建資料';
+  }
+  buildFilters(); render();
+}
+
+function buildFilters(){
+  const cats={}; items.forEach(i=>{const m=mainCat(i.cat); cats[m]=(cats[m]||0)+1;});
+  $('#cat').innerHTML='<option value="">全部類型</option><option value="__w">⚔ 可當武器</option>'+
+    Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<option value="${esc(k)}">${esc(k)}（${v}）</option>`).join('');
+  const locs={}; items.forEach(i=>{const p=parentLoc(i.loc); locs[p]=(locs[p]||0)+1;});
+  const order=Object.keys(locs);
+  $('#locs').innerHTML=`<button class="chip on" data-l="">全部<em>${items.length}</em></button>`+
+    order.map(k=>`<button class="chip" data-l="${esc(k)}">${esc(k)}<em>${locs[k]}</em></button>`).join('');
+}
+
+function filtered(){
+  const q=state.q.toLowerCase();
+  return items.filter(i=>{
+    if(state.loc && parentLoc(i.loc)!==state.loc) return false;
+    if(state.cat==='__w'){ if(!i.cat.includes('武器')) return false; }
+    else if(state.cat && mainCat(i.cat)!==state.cat) return false;
+    if(q && !(i.name+' '+i.cat+' '+i.loc).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function sorter(a,b){
+  const {key,dir}=state.sort;
+  if(key==='qty') return (a.qty-b.qty)*dir || a.name.localeCompare(b.name,'zh-Hant');
+  return String(a[key]).localeCompare(String(b[key]),'zh-Hant')*dir;
+}
+function th(key,label,cls=''){
+  const s=state.sort; const a=s.key===key?`<span class="arr">${s.dir>0?'▲':'▼'}</span>`:'';
+  return `<th class="${cls}" data-k="${key}">${label} ${a}</th>`;
+}
+const catTag = c => `<span class="cat${c.includes('武器')?' w':''}">${esc(c)}</span>`;
+
+function render(){
+  const list=filtered();
+  const qty=list.reduce((s,i)=>s+i.qty,0);
+  const names=new Set(list.map(i=>i.name));
+  $('#sTypes').textContent=fmt(names.size);
+  $('#sQty').textContent=fmt(qty);
+  $('#sLocs').textContent=new Set(list.map(i=>i.loc)).size;
+  $('#clr').style.display=state.q?'block':'none';
+  if(!list.length){ $('#out').innerHTML='<div class="empty">找不到符合的物品</div>'; return; }
+
+  if(state.view==='sum'){
+    const m=new Map();
+    list.forEach(i=>{
+      if(!m.has(i.name)) m.set(i.name,{name:i.name,cat:i.cat,qty:0,locs:[]});
+      const g=m.get(i.name); g.qty+=i.qty; g.locs.push(i);
+    });
+    const rows=[...m.values()].sort(state.sort.key==='loc'?(a,b)=>b.locs.length-a.locs.length:sorter);
+    $('#out').innerHTML=`<div class="group"><table><thead><tr>${th('name','名稱')}${th('qty','合計','num')}${th('cat','類型')}${th('loc','存放位置')}</tr></thead><tbody>`+
+      rows.map(g=>{
+        const locs=g.locs.map(l=>`<span class="loc">${hl(l.loc)}<b>${l.qty}</b></span>`).join('');
+        return `<tr><td class="name">${hl(g.name)}</td><td class="num">${fmt(g.qty)}</td><td class="meta">${catTag(g.cat)} ${locs}</td><td>${catTag(g.cat)}</td><td>${locs}</td></tr>`;
+      }).join('')+'</tbody></table></div>';
+    fixDesktopCols(); return;
+  }
+
+  const groups=new Map();
+  list.forEach(i=>{ if(!groups.has(i.loc)) groups.set(i.loc,[]); groups.get(i.loc).push(i); });
+  $('#out').innerHTML=[...groups].map(([loc,arr])=>{
+    arr.sort(sorter);
+    const tot=arr.reduce((s,i)=>s+i.qty,0);
+    return `<section class="group"><h2>${hl(loc)} <small>${arr.length} 項 · ${fmt(tot)} 件</small></h2><table><thead><tr>${th('name','名稱')}${th('qty','數量','num')}${th('cat','類型')}</tr></thead><tbody>`+
+      arr.map(i=>`<tr><td class="name">${hl(i.name)}</td><td class="num">${fmt(i.qty)}</td><td class="meta">${catTag(i.cat)}</td><td>${catTag(i.cat)}</td></tr>`).join('')+
+      '</tbody></table></section>';
+  }).join('');
+  fixDesktopCols();
+}
+/* 手機版用 .meta 欄，桌機版隱藏；桌機的獨立欄在手機隱藏 */
+function fixDesktopCols(){
+  const mobile=matchMedia('(max-width:640px)').matches;
+  document.querySelectorAll('tbody tr').forEach(tr=>{
+    [...tr.children].forEach((td,i)=>{ if(i>=3) td.style.display=mobile?'none':''; });
+  });
+}
+addEventListener('resize',fixDesktopCols);
+
+$('#q').addEventListener('input',e=>{state.q=e.target.value.trim();render();});
+$('#clr').addEventListener('click',()=>{$('#q').value='';state.q='';render();$('#q').focus();});
+$('#cat').addEventListener('change',e=>{state.cat=e.target.value;render();});
+$('#locs').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  state.loc=b.dataset.l;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b));
+  render();
+});
+$('#view').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  state.view=b.dataset.v;
+  document.querySelectorAll('#view button').forEach(x=>x.classList.toggle('on',x===b));
+  render();
+});
+$('#out').addEventListener('click',e=>{
+  const h=e.target.closest('th'); if(!h) return;
+  const k=h.dataset.k;
+  state.sort = state.sort.key===k ? {key:k,dir:-state.sort.dir} : {key:k,dir:k==='qty'?-1:1};
+  render();
+});
+load();
+</script>
+</body>
+</html>
