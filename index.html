@@ -755,7 +755,7 @@ Knox Pass 車用感應盒（黑色）,2,電子零件,修車櫃右中
    把 Google 試算表的 CSV 連結貼在這裡，網頁就會改讀試算表。
    格式：https://docs.google.com/spreadsheets/d/【試算表ID】/gviz/tq?tqx=out:csv
    留空就用上面的內建資料。                                         */
-const SHEET_CSV_URL = '';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1O-bBJlvLEfAHIO0uerXRgKin_BeEtG9qCMCzKUu_GX8/gviz/tq?tqx=out:csv';
 /* ============================== */
 
 const $ = s => document.querySelector(s);
@@ -777,8 +777,8 @@ function parseCSV(text){
 }
 function toItems(text){
   const rows=parseCSV(text.trim()); const h=rows.shift().map(s=>s.trim());
-  const ix=k=>h.indexOf(k);
-  const [n,c,t,l]=[ix('名稱'),ix('數量'),ix('類型'),ix('位置')];
+  const ix=(k,d)=>{const i=h.indexOf(k);return i<0?d:i;};
+  const [n,c,t,l]=[ix('名稱',0),ix('數量',1),ix('類型',2),ix('位置',3)];
   return rows.map(r=>({
     name:(r[n]||'').trim(), qty:parseInt(r[c],10)||0,
     cat:(r[t]||'').trim(), loc:(r[l]||'').trim()
@@ -800,6 +800,7 @@ async function load(){
       const r=await fetch(SHEET_CSV_URL,{cache:'no-store'});
       if(!r.ok) throw 0;
       items=toItems(await r.text());
+      if(!items.length) throw 0;
       $('#src').textContent='● 即時資料：Google 試算表';
       $('#src').classList.add('live');
     }catch(e){
